@@ -44,9 +44,14 @@ passport.deserializeUser((user, done) => done(null, user));
 
 // Routes
 app.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+    "/auth/google",
+    (req, res, next) => {
+      console.log("Redirecting to Google OAuth...");
+      console.log("Callback URL:", process.env.GOOGLE_CALLBACK_URL);
+      next();
+    },
+    passport.authenticate("google", { scope: ["profile", "email"] })
+  );
 
 app.get(
   "/auth/google/callback",

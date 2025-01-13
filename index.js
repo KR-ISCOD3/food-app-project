@@ -10,15 +10,15 @@ const app = express();
 
 // Middleware for session handling
 app.use(
-    session({
-      secret: process.env.SESSION_SECRET, // Replace with your secret key
-      resave: false,
-      saveUninitialized: true,
-      cookie: {
-        maxAge: 24 * 60 * 60 * 1000, // 1 day
-      },
-    })
-  );
+  session({
+    secret: process.env.SESSION_SECRET, // Load secret from .env
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    },
+  })
+);
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -30,13 +30,17 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      callbackURL:
+        process.env.NODE_ENV === "production"
+          ? process.env.GOOGLE_CALLBACK_URL_PRODUCTION
+          : process.env.GOOGLE_CALLBACK_URL_DEVELOPMENT,
     },
     (accessToken, refreshToken, profile, done) => {
-        return done(null, profile);
+      return done(null, profile);
     }
   )
 );
+
 
 // Serialize and deserialize user
 passport.serializeUser((user, done) => done(null, user));
@@ -44,14 +48,9 @@ passport.deserializeUser((user, done) => done(null, user));
 
 // Routes
 app.get(
-    "/auth/google",
-    (req, res, next) => {
-      console.log("Redirecting to Google OAuth...");
-      console.log("Callback URL:", process.env.GOOGLE_CALLBACK_URL);
-      next();
-    },
-    passport.authenticate("google", { scope: ["profile", "email"] })
-  );
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
 
 app.get(
   "/auth/google/callback",
@@ -62,14 +61,14 @@ app.get(
 );
 
 app.get("/profile", (req, res) => {
-    if (!req.user) return res.redirect("/");
-    res.send(`
-      <h1>Profile</h1>
-      <p><strong>Name:</strong> ${req.user.displayName}</p>
-      <p><strong>Email:</strong> ${req.user.emails[0].value}</p>
-      <img src="${req.user.photos[0].value}" alt="Profile Picture" style="border-radius:50%;width:100px;height:100px;">
-    `);
-  });
+  if (!req.user) return res.redirect("/");
+  res.send(`
+    <h1>Profile</h1>
+    <p><strong>Name:</strong> ${req.user.displayName}</p>
+    <p><strong>Email:</strong> ${req.user.emails[0].value}</p>
+    <img src="${req.user.photos[0].value}" alt="Profile Picture" style="border-radius:50%;width:100px;height:100px;">
+  `);
+});
 
 app.get("/logout", (req, res) => {
   req.logout((err) => {
@@ -78,4 +77,5 @@ app.get("/logout", (req, res) => {
   });
 });
 
+// Start the server
 app.listen(3000, () => console.log("Server running on http://localhost:3000"));
